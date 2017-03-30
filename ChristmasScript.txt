@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## This script was originally developed for the Raspberry Pi. On non-Pi systems such as the
-## FriendlyArm M1 I use Armbian. Don't expect ports to work out of the box on non-Pi systems.
+## FriendlyArm. Don't expect ports to work out of the box on non-Pi systems.
 ## Also, for all systems, after you load this script and before running, you need to give
 ## it execute permissions and sure it is saved in Linux
 ## format (carriage returns only) - Notepad++ has this option under edit - eol conversion.
@@ -16,6 +16,8 @@
 ## 6. Do not access this script as SUDO.
 ##
 ## See http://tech.scargill.net/orange-pi-pc-battle-of-the-pis/
+## 25/03/2017 Tested on NanoPi M1+, host updating added and defaults on inputs added
+## 18/03/2017 Tested on NanoPi M3
 ## 16/03/2017 Modifications to handle experimental Android Phone setup
 ## 10/03/2017 Modifications to detect and run with the Raspberry Pi Zero Lite (ARM6)
 ## 30/01/2017 Minor change to let the script work on Mint Linux on a laptop (Looks like Ubuntu)
@@ -274,6 +276,7 @@ echo "APT::Color \"1\";" | sudo tee -a /etc/apt/apt.conf.d/99progressbar > /dev/
 
 username="user"
 userpass="password123"
+
 adminname="admin"
 adminpass="password123"
 
@@ -344,7 +347,7 @@ if [[ $MYMENU == "" ]]; then
 fi
 
 if [[ $MYMENU == *"modpass"* ]]; then
-    username=$(whiptail --inputbox "Enter a user name (example user)" 8 40 3>&1 1>&2 2>&3)
+    username=$(whiptail --inputbox "Enter a user name (example user)" 8 40 $username 3>&1 1>&2 2>&3)
     if [[ -z "${username// }" ]]; then
         printf "No user name given - aborting\r\n"; exit
     fi
@@ -363,7 +366,7 @@ if [[ $MYMENU == *"modpass"* ]]; then
         printf "${BIRed}Passwords don't match - aborting${BIWhite}\r\n"; exit
     fi
     
-    adminname=$(whiptail --inputbox "Enter an admin name (example admin)" 8 40 3>&1 1>&2 2>&3)
+    adminname=$(whiptail --inputbox "Enter an admin name (example admin)" 8 40 $adminname 3>&1 1>&2 2>&3)
     if [[ -z "${adminname// }" ]]; then
         printf "${BIRed}No admin name given - aborting${BIWhite}\r\n"
         exit
@@ -412,8 +415,9 @@ fi
 
 if [[ $MYMENU == *"phone"* ]]; then
     echo "en_US.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen > /dev/null
-    echo "service rsyslog stop" | sudo tee -a /etc/init.d/rc.local > /dev/null
-    sudo locale-gen
+    # echo "service rsyslog stop" | sudo tee -a /etc/init.d/rc.local > /dev/null
+    sudo update-rc.d rsyslog disable
+ sudo locale-gen
     sudo sed -i -e 's#exit 0##g' /etc/rc.local
     echo "cd /home/pi/habridge" | sudo tee -a /etc/rc.local > /dev/null
 	echo "[ -f /home/pi/habridge/habridge-log.txt ] && rm /home/pi/habridge/habridge-log.txt" | sudo tee -a /etc/rc.local > /dev/null
@@ -445,11 +449,10 @@ if [[ $MYMENU == *"prereq"* ]]; then
     sudo setcap cap_net_raw=ep /bin/ping
     sudo setcap cap_net_raw=ep /bin/ping6
     # Prerequisite suggested by Julian and adding in python-dev - and stuff I've added for SAMBA and telnet
-    sudo apt-get install $AQUIET -y bash-completion unzip build-essential git python-serial scons libboost-filesystem-dev libboost-program-options-dev libboost-system-dev libsqlite3-dev subversion libcurl4-openssl-dev libusb-dev python-dev cmake curl samba samba-common samba-common-bin winbind telnet jq
+    sudo apt-get install $AQUIET -y bash-completion unzip build-essential git python-serial scons libboost-filesystem-dev libboost-program-options-dev libboost-system-dev libsqlite3-dev subversion libcurl4-openssl-dev libusb-dev python-dev cmake curl samba samba-common samba-common-bin winbind telnet usbutils gawk jq
     # libboost-thread-dev libboost-all-dev
     # This line to ensure name is resolved from hosts FIRST
     sudo sed -i '/\[global\]/a name resolve order = hosts wins bcast' /etc/samba/smb.conf
-    
 fi
 
 if [[ $MYMENU == *"jed"* ]]; then
@@ -626,7 +629,7 @@ if [[ $MYMENU == *"nodered"* ]]; then
 		sudo systemctl daemon-reload
 	fi
 
-    cd # without this, you'll end up creating the .node-red folder in ~/node-v6.10.0-linux-armv6l (where you were after line 591 in case of armv6 arch)
+    cd 
     mkdir .node-red
     cd .node-red
     printstatus "Installing Nodes"
@@ -636,7 +639,6 @@ if [[ $MYMENU == *"nodered"* ]]; then
     npm $NQUIET install node-red-contrib-bigtimer
     npm $NQUIET install node-red-contrib-esplogin
     npm $NQUIET install node-red-contrib-timeout
-    npm $NQUIET install node-red-node-pushbullet
     npm $NQUIET install node-red-node-openweathermap
     npm $NQUIET install node-red-node-google
     npm $NQUIET install node-red-node-sqlite
@@ -659,6 +661,9 @@ if [[ $MYMENU == *"nodered"* ]]; then
     npm $NQUIET install node-red-dashboard
     npm $NQUIET install node-red-node-darksky
     npm $NQUIET install node-red-node-serialport
+	npm $NQUIET install node-red-contrib-owntracks
+	npm $NQUIET install node-red-contrib-chatbot
+	
     sudo npm $NQUIET install bcryptjs
     
     if [[ $OPSYS == *"RASPBIAN"* ]]; then
@@ -675,6 +680,12 @@ if [[ $MYMENU == *"nodered"* ]]; then
     bcryptuserpass=$(node -e "console.log(require('bcryptjs').hashSync(process.argv[1], 8));" $userpass)
     # echo Encrypted password: $bcryptpass
     cp settings.js settings.js.bak-pre-crypt
+	
+	datetimestamp=`date +%Y-%m-%d_%Hh%Mm`
+	cd ~/.node-red
+	# this will add the TOP piece of code for non-vol variables in settings.js
+	gawk -i inplace -v INPLACE_SUFFIX=-$datetimestamp '!found && /module.exports/ { print " var mySettings;\n try {\n mySettings = require(\"/home/pi/.node-red/redvars.js\");\n } catch(err) {\n mySettings = {};\n }\n"; found=1 } 1' settings.js
+	
     sudo sed -i -e 's#functionGlobalContext: {#\/\/ functionGlobalContext: {#g' settings.js
     sudo sed -i -e 's#\s\s\s\s\},#    \/\/ },#g' settings.js
     sudo sed -i -e 's#^\}#,#g' settings.js
@@ -683,7 +694,8 @@ if [[ $MYMENU == *"nodered"* ]]; then
     sudo echo "    functionGlobalContext: {" >> tmpfile
     sudo echo "        os:require('os')," >> tmpfile
     sudo echo "        moment:require('moment'), " >> tmpfile
-    sudo echo "        fs:require('fs')" >> tmpfile
+    sudo echo "        fs:require('fs'), " >> tmpfile
+    sudo echo "        mySettings:mySettings " >> tmpfile
     sudo echo "    }," >> tmpfile
     sudo echo " " >> tmpfile
     sudo echo "    adminAuth: {" >> tmpfile
@@ -730,7 +742,7 @@ fi
 
 
 if [[ $MYMENU == *"webmin"* ]]; then
-    printstatus "Installing Webmin at port 10000"
+    printstatus "Installing Webmin at port 10000 - could take some time"
     #cd
     #mkdir webmin
     #cd webmin
@@ -868,10 +880,19 @@ if [[ $MYMENU == *"addindex"* ]]; then
     sudo wget $AQUIET http://www.scargill.net/iot/reset.css -O /var/www/html/reset.css
 fi
 
-
 sudo apt-get $AQUIET -y clean
 
+myip=$(hostname -I)
+newhostname=$(hostname)
+
+cd
+newhostname=$(whiptail --inputbox "Nearly done. Enter new host name or OK" 8 40 $newhostname 3>&1 1>&2 2>&3)
+echo $newhostname | sudo tee /etc/hostname 2&>1 /dev/null
+sudo sed -i '/^127.0.1.1/ d' /etc/hosts 2&>1 /dev/null
+echo 127.0.1.1 $newhostname | sudo tee -a /etc/hosts 2&>1 /dev/null
+sudo /etc/init.d/hostname.sh 2&>1 /dev/null
+
+
 printstatus "All done."
-printf  "${ICyan}If you wish to change the hostname - change value in /etc/hosts\r\n"
-printf  "Change also value in /etc/hostname to the same\r\nthen run sudo /etc/init.d/hostname.sh (or reboot)\r\n\r\n"
+printf 'Current IP is %s and hostname is \r\n' "$myip" "$newhostname"
 printf  "${BIMagenta}**** PLEASE REBOOT NOW ****${IWhite}\r\n"
