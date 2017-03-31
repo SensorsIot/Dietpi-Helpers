@@ -7,7 +7,6 @@ adminpass="admin"
     cd /home/pi/.node-red/
     rm settings.js
     sudo service nodered start
-    echo "Service Started"
     while [ ! -f settings.js ] ; do echo "waiting..."; sudo sleep 1 ; done ; sudo service nodered stop;
     echo " "
     bcryptadminpass=$(node -e "console.log(require('bcryptjs').hashSync(process.argv[1], 8));" $adminpass)
