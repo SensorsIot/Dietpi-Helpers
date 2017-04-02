@@ -37,3 +37,4 @@ adminpass="admin"
     sudo echo "}" >> tmpfile
     sudo cat tmpfile >> settings.js
     sudo rm -f tmpfile
+    sudo node-red-start
