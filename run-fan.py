@@ -5,8 +5,8 @@ from time import sleep
 import signal
 import sys
 import RPi.GPIO as GPIO
-pin = 18 # The pin ID, edit here to change it
-maxTMP = 40 # The maximum temperature in Celsius after which we trigger the fan
+pin = 2 # The pin ID, edit here to change it
+maxTMP = 45 # The maximum temperature in Celsius after which we trigger the fan
 def setup():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(pin, GPIO.OUT)
@@ -27,7 +27,7 @@ def getTEMP():
     CPU_temp = float(getCPUtemperature())
     if CPU_temp>maxTMP:
         fanON()
-    else:
+    CPU_temp<maxTMP-5:
         fanOFF()
     return()
 def setPin(mode): # A little redundant function but useful if you want to add logging
