@@ -27,7 +27,7 @@ def getTEMP():
     CPU_temp = float(getCPUtemperature())
     if CPU_temp>maxTMP:
         fanON()
-    CPU_temp<maxTMP-5:
+    if CPU_temp<maxTMP-5:
         fanOFF()
     return()
 def setPin(mode): # A little redundant function but useful if you want to add logging
