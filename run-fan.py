@@ -13,7 +13,7 @@ def setup():
     GPIO.setwarnings(False)
     return()
 def getCPUtemperature():
-    res = os.popen(‘vcgencmd measure_temp').readline()
+    res = os.popen('vcgencmd measure_temp').readline()
     temp =(res.replace("temp=","").replace("'C\n",""))
     #print("temp is {0}".format(temp)) #Uncomment here for testing
     return temp
